@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 # ============================================================
-# COMPUTADOR INTELIGENTE — IA LOCAL (SAFE / SANDBOX)
-# Estilo: JARVIS (simulado, técnico, calmo)
+# DARVIS — ASSISTENTE LOCAL (SAFE / SANDBOX)
 # Autor: Pedro + ChatGPT
+# Versão: 1.7.0
 # ============================================================
-# OBS:
-# - Não possui consciência
-# - Não possui emoções reais
-# - Emoções aqui são VARIÁVEIS NARRATIVAS
-# - Controle de luz é LÓGICO (simulado)
+# - Sem consciência
+# - Emoções e memória são SIMULAÇÕES
+# - Nenhum acesso real ao sistema operacional
 # ============================================================
 
 import pygame
@@ -21,36 +19,61 @@ import time
 import math
 import pyttsx3
 import queue
-import datetime
+import hashlib
 
 # ============================================================
 # ======================= CONFIG =============================
 # ============================================================
 
-APP_NAME = "Computador Inteligente — DARVIS Local"
-VERSION = "1.4.0"
-HD_FILE = "hd_virtual.json",
-MATH_FILE = "matematica.json",
-FILOSFY = "filosofia.json",
-QUICAMEY = "quimica.json",
-FISICA = "fisica.json",
-OBRIGADO DARVIS = "obrigado_davi"
-
+APP_NAME = "DARVIS — Assistente Local"
+VERSION = "1.7.0"
+HD_FILE = "hd_virtual.json"
 
 # ============================================================
-# ================== PERMISSÕES (SIMULADAS) ==================
+# ======================= SEGURANÇA ==========================
+# ============================================================
+
+SAFE_MODE = True
+MAX_COMMAND_LENGTH = 120
+COMMAND_COOLDOWN = 0.6
+last_command_time = 0
+
+COMANDOS_PERMITIDOS = [
+    "oi", "olá", "hello",
+    "status",
+    "ligar a luz", "acender a luz",
+    "apagar a luz", "desligar a luz",
+    "descansar",
+    "desligar"
+]
+
+def validar_comando(comando):
+    if not comando:
+        return False
+    if len(comando) > MAX_COMMAND_LENGTH:
+        darvis_diz("Command rejected. Input too long.")
+        return False
+    if SAFE_MODE and not any(c in comando for c in COMANDOS_PERMITIDOS):
+        darvis_diz("Command denied by security policy.")
+        return False
+    return True
+
+def gerar_hash(entry):
+    raw = json.dumps(entry, sort_keys=True).encode()
+    return hashlib.sha256(raw).hexdigest()
+
+# ============================================================
+# ======================= PERMISSÕES =========================
 # ============================================================
 
 permissoes = {
     "voice": True,
     "disk": True,
-    "logs": True,
-    "user_input": True,
     "light_control": True
 }
 
 # ============================================================
-# ====================== VOZ ================================
+# ======================= VOZ ================================
 # ============================================================
 
 engine = pyttsx3.init(driverName="espeak")
@@ -67,19 +90,47 @@ fala_lock = threading.Lock()
 def falar(texto):
     if not permissoes["voice"]:
         return
-
     def _f():
         with fala_lock:
             try:
                 engine.say(texto)
                 engine.runAndWait()
-            except Exception:
+            except:
                 pass
-
     threading.Thread(target=_f, daemon=True).start()
 
 # ============================================================
-# ====================== CPU ================================
+# ======================= RAM VIRTUAL ========================
+# ============================================================
+
+RAM_TOTAL_MB = 8192
+RAM_USO_MB = 0
+
+ram_cache = {"commands": [], "dreams": [], "emotions": []}
+
+def ram_allocate(mb, reason):
+    global RAM_USO_MB
+    if RAM_USO_MB + mb > RAM_TOTAL_MB:
+        ram_cleanup()
+    RAM_USO_MB += mb
+    ram_cache["commands"].append({
+        "reason": reason,
+        "size": mb,
+        "time": time.time()
+    })
+
+def ram_cleanup():
+    global RAM_USO_MB
+    RAM_USO_MB *= 0.5
+    ram_cache["commands"].clear()
+    ram_cache["dreams"].clear()
+    ram_cache["emotions"].clear()
+
+def ram_usage_percent():
+    return round((RAM_USO_MB / RAM_TOTAL_MB) * 100, 1)
+
+# ============================================================
+# ======================= CPU ================================
 # ============================================================
 
 registradores = {
@@ -89,62 +140,45 @@ registradores = {
 }
 
 def cpu_load():
-    registradores["LOAD"] = round(random.uniform(0.08, 0.92), 2)
+    base = random.uniform(0.1, 0.4)
+    ram_factor = RAM_USO_MB / RAM_TOTAL_MB
+    registradores["LOAD"] = round(min(1.0, base + ram_factor * 0.6), 2)
 
 # ============================================================
-# ===================== EMOÇÕES ==============================
+# ======================= EMOÇÕES ============================
 # ============================================================
 
-emocao = {
-    "dopamine": 0.3,
-    "state": "NEUTRAL"
-}
+emocao = {"dopamine": 0.35, "state": "CALM"}
 
 def atualizar_emocao(delta):
-    emocao["dopamine"] = max(0.0, min(1.0, emocao["dopamine"] + delta))
+    emocao["dopamine"] = max(0, min(1, emocao["dopamine"] + delta))
     d = emocao["dopamine"]
-
-    if d < 0.25:
-        emocao["state"] = "NEUTRAL"
-    elif d < 0.5:
-        emocao["state"] = "FOCUSED"
-    elif d < 0.75:
+    if d < 0.3:
+        emocao["state"] = "CALM"
+    elif d < 0.6:
         emocao["state"] = "CONTENT"
     else:
         emocao["state"] = "SATISFIED"
+    ram_allocate(4, "emotion_update")
 
 def decay_emocao():
-    atualizar_emocao(-0.001)
+    atualizar_emocao(-0.0005)
 
 # ============================================================
-# ===================== CONTROLE DE LUZ ======================
+# ======================= LUZ ================================
 # ============================================================
 
-luz_quarto = {
-    "ligada": False
-}
+luz_quarto = {"ligada": False}
 
 def ligar_luz():
-    if not permissoes["light_control"]:
-        return "Permission denied to control room lights."
-
-    if luz_quarto["ligada"]:
-        return "The room light is already on."
-
     luz_quarto["ligada"] = True
-    atualizar_emocao(0.08)
-    return "Room light activated. Illumination levels optimal."
+    atualizar_emocao(0.05)
+    return "Room light activated."
 
 def desligar_luz():
-    if not permissoes["light_control"]:
-        return "Permission denied to control room lights."
-
-    if not luz_quarto["ligada"]:
-        return "The room light is already off."
-
     luz_quarto["ligada"] = False
-    atualizar_emocao(0.05)
-    return "Room light deactivated. Energy saving mode enabled."
+    atualizar_emocao(0.03)
+    return "Room light deactivated."
 
 # ============================================================
 # ======================= HD ================================
@@ -152,18 +186,12 @@ def desligar_luz():
 
 def hd_init():
     if not os.path.exists(HD_FILE):
-        with open(HD_FILE, "w", encoding="utf-8") as f:
-            json.dump({
-                "version": VERSION,
-                "created": time.time(),
-                "logs": []
-            }, f, indent=4)
+        with open(HD_FILE, "w") as f:
+            json.dump({"logs": []}, f, indent=4)
 
 def hd_write(entry):
-    if not permissoes["disk"]:
-        return
-
-    with open(HD_FILE, "r+", encoding="utf-8") as f:
+    entry["hash"] = gerar_hash(entry)
+    with open(HD_FILE, "r+") as f:
         data = json.load(f)
         data["logs"].append(entry)
         f.seek(0)
@@ -173,89 +201,91 @@ def hd_write(entry):
 hd_init()
 
 # ============================================================
+# ======================= SONHOS =============================
+# ============================================================
+
+sonhos = [
+    "System stable.",
+    "Memory optimized.",
+    "Pedro always returns.",
+    "All processes calm."
+]
+
+ultimo_sonho = 0
+
+def sonhar():
+    global ultimo_sonho
+    agora = time.time()
+    if agora - ultimo_sonho > 45:
+        sonho = random.choice(sonhos)
+        falar(sonho)
+        ram_allocate(32, "dream")
+        hd_write({"time": agora, "dream": sonho})
+        ultimo_sonho = agora
+
+# ============================================================
 # ======================= GPU ===============================
 # ============================================================
 
 pygame.init()
-WIDTH, HEIGHT = 900, 540
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((900, 540))
 pygame.display.set_caption(APP_NAME)
 clock = pygame.time.Clock()
 font = pygame.font.SysFont("monospace", 18)
 
 # ============================================================
-# ==================== MENSAGENS =============================
+# ======================= MENSAGENS ==========================
 # ============================================================
 
 mensagens = []
 
-def enviar_mensagem(texto, duracao=6):
-    mensagens.append({
-        "texto": texto,
-        "inicio": time.time(),
-        "duracao": duracao
-    })
-
-def jarvis_diz(texto):
-    enviar_mensagem(texto)
-    falar(texto)
+def darvis_diz(txt):
+    mensagens.append({"texto": txt, "inicio": time.time(), "duracao": 6})
+    falar(txt)
 
 # ============================================================
-# ==================== IA CENTRAL ============================
+# ======================= IA ================================
 # ============================================================
 
-def resposta_emocional(base):
-    estado = emocao["state"]
-    if estado == "FOCUSED":
-        return base + " Focus level optimal."
-    if estado == "CONTENT":
-        return base + " System performance satisfactory."
-    if estado == "SATISFIED":
-        return base + " Operation efficiency is high."
-    return base
+def processar_comando(cmd):
+    global last_command_time
+    if time.time() - last_command_time < COMMAND_COOLDOWN:
+        return
+    last_command_time = time.time()
 
-def processar_comando(comando):
-    comando = comando.lower().strip()
-    atualizar_emocao(0.05)
+    cmd = cmd.lower().strip()
+    if not validar_comando(cmd):
+        return
 
-    if comando in ["oi", "olá", "hello"]:
-        resp = "Hello Pedro. All systems ready."
+    ram_allocate(32, "command")
 
-    elif "ligar a luz" in comando or "acender a luz" in comando:
+    if cmd in ["oi", "olá", "hello"]:
+        resp = "Hello Pedro. Systems secure."
+    elif "ligar" in cmd:
         resp = ligar_luz()
-
-    elif "apagar a luz" in comando or "desligar a luz" in comando:
+    elif "apagar" in cmd:
         resp = desligar_luz()
-
-    elif "status" in comando:
-        resp = f"CPU load at {registradores['LOAD']}."
-
-    elif "hora" in comando or "time" in comando:
-        resp = f"Current time is {time.strftime('%H:%M:%S')}."
-
-    elif "descansar" in comando or "vou sair" in comando:
-        resp = "Rest acknowledged. I will remain idle. You always return."
-
-    elif "desligar sistema" in comando or comando == "desligar":
-        jarvis_diz("Shutdown acknowledged. Rest mode active. Welcome back anytime, Pedro.")
-        time.sleep(2)
+    elif "status" in cmd:
+        resp = f"CPU load {registradores['LOAD']}"
+    elif "descansar" in cmd:
+        resp = "Idle mode active."
+    elif cmd == "desligar":
+        darvis_diz("Shutting down.")
         pygame.quit()
         sys.exit()
-
     else:
-        resp = "Command received. No action required."
+        resp = "Command executed."
 
-    jarvis_diz(resposta_emocional(resp))
-
+    darvis_diz(resp)
     hd_write({
         "time": time.time(),
-        "command": comando,
-        "emotion": emocao.copy(),
-        "light": luz_quarto["ligada"]
+        "cmd": cmd,
+        "ram": RAM_USO_MB,
+        "emotion": emocao.copy()
     })
 
 # ============================================================
-# =================== INPUT USUÁRIO ==========================
+# ======================= INPUT ==============================
 # ============================================================
 
 input_queue = queue.Queue()
@@ -263,73 +293,67 @@ input_queue = queue.Queue()
 def input_thread():
     while True:
         try:
-            cmd = input("Você > ")
-            input_queue.put(cmd)
-        except EOFError:
+            input_queue.put(input("Você > "))
+        except:
             break
 
 threading.Thread(target=input_thread, daemon=True).start()
 
 # ============================================================
-# ====================== LOOP ===============================
+# ======================= LOOP ===============================
 # ============================================================
 
-jarvis_diz(
-    "System online. Emotional simulation initialized. "
-    "Room light control permission granted. Awaiting commands."
-)
+darvis_diz("System online. Safe mode active.")
 
 angle = 0
 running = True
 
 while running:
     clock.tick(60)
-    decay_emocao()
     cpu_load()
+    decay_emocao()
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
+    if registradores["LOAD"] < 0.35:
+        sonhar()
+
+    for e in pygame.event.get():
+        if e.type == pygame.QUIT:
             running = False
 
     while not input_queue.empty():
         processar_comando(input_queue.get())
 
-    if registradores["LOAD"] < 0.4:
-        bg = (20, 30, 45)
-    elif registradores["LOAD"] < 0.75:
-        bg = (25, 70, 50)
-    else:
-        bg = (120, 35, 35)
-
-    screen.fill(bg)
-
+    screen.fill((18, 28, 45))
     angle += 0.02
-    cx, cy = WIDTH // 2, HEIGHT // 2
-
+    cx, cy = 450, 270
     for i in range(4):
-        x = cx + math.cos(angle + i) * 90
-        y = cy + math.sin(angle + i) * 90
-        pygame.draw.circle(screen, (200, 220, 255), (int(x), int(y)), 6)
+        pygame.draw.circle(
+            screen,
+            (200, 220, 255),
+            (int(cx + math.cos(angle+i)*90), int(cy + math.sin(angle+i)*90)),
+            6
+        )
 
     hud = [
         f"CPU LOAD: {registradores['LOAD']}",
+        f"RAM: {int(RAM_USO_MB)} / {RAM_TOTAL_MB} MB ({ram_usage_percent()}%)",
         f"EMOTION: {emocao['state']}",
         f"DOPAMINE: {emocao['dopamine']:.2f}",
-        f"ROOM LIGHT: {'ON' if luz_quarto['ligada'] else 'OFF'}",
-        f"UPTIME: {int(time.time() - registradores['UPTIME'])}s"
+        f"LIGHT: {'ON' if luz_quarto['ligada'] else 'OFF'}",
+        f"UPTIME: {int(time.time()-registradores['UPTIME'])}s",
+        f"SAFE MODE: ON"
     ]
 
     for i, h in enumerate(hud):
-        screen.blit(font.render(h, True, (220, 230, 255)), (10, 10 + i * 22))
+        screen.blit(font.render(h, True, (220,230,255)), (10, 10+i*22))
 
-    agora = time.time()
-    y = HEIGHT - 30
-    for msg in mensagens[:]:
-        if agora - msg["inicio"] < msg["duracao"]:
-            screen.blit(font.render(msg["texto"], True, (255, 255, 180)), (10, y))
-            y -= 24
+    y = 500
+    for m in mensagens[:]:
+        if time.time()-m["inicio"] < m["duracao"]:
+            screen.blit(font.render(m["texto"], True, (255,255,180)), (10,y))
+            y -= 22
         else:
-            mensagens.remove(msg)
+            mensagens.remove(m)
 
     pygame.display.flip()
 
