@@ -1,0 +1,31 @@
+{
+  "area": "Filosofia",
+  "descricao": "Base de conhecimentos filosóficos",
+  "topicos": [
+    {
+      "nome": "Filosofia Antiga",
+      "conteudos": [
+        "Sócrates",
+        "Platão",
+        "Aristóteles"
+      ]
+    },
+    {
+      "nome": "Filosofia Moderna",
+      "conteudos": [
+        "Descartes",
+        "Kant",
+        "Empirismo",
+        "Racionalismo"
+      ]
+    },
+    {
+      "nome": "Filosofia Contemporânea",
+      "conteudos": [
+        "Existencialismo",
+        "Nietzsche",
+        "Ética contemporânea"
+      ]
+    }
+  ]
+}

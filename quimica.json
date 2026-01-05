@@ -1,0 +1,25 @@
+{
+  "area": "Química",
+  "descricao": "Base de conhecimentos de química",
+  "topicos": [
+    {
+      "nome": "Química Orgânica",
+      "conteudos": [
+        "Hidrocarbonetos",
+        "Funções oxigenadas",
+        "Funções nitrogenadas",
+        "Isomeria",
+        "Reações orgânicas"
+      ]
+    },
+    {
+      "nome": "Química Geral",
+      "conteudos": [
+        "Tabela periódica",
+        "Ligações químicas",
+        "Estequiometria",
+        "Estados físicos da matéria"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "area": "Física",
+  "descricao": "Base de conhecimentos físicos",
+  "topicos": [
+    {
+      "nome": "Mecânica",
+      "conteudos": [
+        "Cinemática",
+        "Dinâmica",
+        "Leis de Newton",
+        "Trabalho e energia"
+      ]
+    },
+    {
+      "nome": "Eletricidade",
+      "conteudos": [
+        "Corrente elétrica",
+        "Tensão",
+        "Resistência elétrica",
+        "Potência elétrica"
+      ]
+    },
+    {
+      "nome": "Física Moderna",
+      "conteudos": [
+        "Relatividade",
+        "Física quântica",
+        "Estrutura do átomo"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "permission_key": "JARVIS-ALPHA-001",
+  "allow_voice": true,
+  "allow_camera": true,
+  "allow_disk_write": true,
+  "allow_system_commands": false
+}

@@ -1,0 +1,34 @@
+{
+  "area": "Matemática",
+  "descricao": "Base de conhecimentos matemáticos",
+  "topicos": [
+    {
+      "nome": "Álgebra",
+      "conteudos": [
+        "Equações do 1º grau",
+        "Equações do 2º grau",
+        "Sistemas lineares",
+        "Funções"
+      ]
+    },
+    {
+      "nome": "Geometria",
+      "conteudos": [
+        "Área",
+        "Perímetro",
+        "Volume",
+        "Geometria espacial"
+      ]
+    },
+    {
+      "nome": "Probabilidade e Estatística",
+      "conteudos": [
+        "Análise combinatória",
+        "Probabilidade",
+        "Média",
+        "Moda",
+        "Mediana"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "area": "Biologia",
+  "descricao": "Base de conhecimentos biológicos",
+  "topicos": [
+    {
+      "nome": "Citologia",
+      "conteudos": [
+        "Célula procarionte",
+        "Célula eucarionte",
+        "Organelas celulares"
+      ]
+    },
+    {
+      "nome": "Genética",
+      "conteudos": [
+        "DNA",
+        "RNA",
+        "Hereditariedade",
+        "Leis de Mendel"
+      ]
+    },
+    {
+      "nome": "Ecologia",
+      "conteudos": [
+        "Cadeia alimentar",
+        "Teia alimentar",
+        "Ciclos biogeoquímicos",
+        "Impactos ambientais"
+      ]
+    }
+  ]
+}
