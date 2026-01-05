@@ -3,15 +3,40 @@ import sys
 import json
 import os
 import random
+import threading
+import time
+import cv2
+import pyttsx3
+
+# =====================
+# ======= VOZ =========
+# =====================
+engine = pyttsx3.init(driverName="espeak")
+engine.setProperty("rate", 135)
+engine.setProperty("volume", 1.0)
+
+for voice in engine.getProperty("voices"):
+    if "english" in voice.name.lower():
+        engine.setProperty("voice", voice.id)
+        break
+
+fala_lock = threading.Lock()
+
+def falar(texto):
+    def _fala():
+        with fala_lock:
+            engine.say(texto)
+            engine.runAndWait()
+    threading.Thread(target=_fala, daemon=True).start()
 
 # =====================
 # ======= CPU =========
 # =====================
 registradores = {
-    "A": 0,   # acumulador
-    "B": 0,   # operando
-    "C": 1,   # CONTROLE (1 = IA ativa)
-    "STATE": 0
+    "A": 0,
+    "B": 0,
+    "C": 1,
+    "STATE": "IDLE"
 }
 
 def add():
@@ -23,17 +48,8 @@ def sub():
 # =====================
 # ======= RAM =========
 # =====================
-RAM_SIZE = 2000
+RAM_SIZE = 1024
 ram = [0] * RAM_SIZE
-
-def ram_write(addr, val):
-    if 0 <= addr < RAM_SIZE:
-        ram[addr] = val
-
-def ram_read(addr):
-    if 0 <= addr < RAM_SIZE:
-        return ram[addr]
-    return 0
 
 # =====================
 # ======= HD ==========
@@ -42,17 +58,14 @@ HD_FILE = "hd_virtual.json"
 
 def hd_init():
     if not os.path.exists(HD_FILE):
-        with open(HD_FILE, "w") as f:
-            json.dump({"memory": []}, f)
-
-def hd_read():
-    with open(HD_FILE, "r") as f:
-        return json.load(f)
+        with open(HD_FILE, "w", encoding="utf-8") as f:
+            json.dump({"memory": []}, f, indent=4)
 
 def hd_write(entry):
-    data = hd_read()
-    data["memory"].append(entry)
-    with open(HD_FILE, "w") as f:
+    with open(HD_FILE, "r+", encoding="utf-8") as f:
+        data = json.load(f)
+        data["memory"].append(entry)
+        f.seek(0)
         json.dump(data, f, indent=4)
 
 hd_init()
@@ -60,129 +73,143 @@ hd_init()
 # =====================
 # ======= GPU =========
 # =====================
-WIDTH, HEIGHT = 640, 480
-FPS = 60
-
 pygame.init()
+
+display_info = pygame.display.Info()
+SCREEN_W = display_info.current_w
+SCREEN_H = display_info.current_h
+
+WIDTH, HEIGHT = 640, 480
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Computador Inteligente (IA + CPU + RAM + HD + GPU)")
+pygame.display.set_caption("Computador Inteligente")
 clock = pygame.time.Clock()
+font = pygame.font.SysFont(None, 24)
 
-framebuffer = [[(0, 0, 0) for _ in range(WIDTH)] for _ in range(HEIGHT)]
-
-class Vertex:
-    def __init__(self, x, y, color):
-        self.x = int(x)
-        self.y = int(y)
-        self.color = color
-
-def clear(color):
-    for y in range(HEIGHT):
-        for x in range(WIDTH):
-            framebuffer[y][x] = color
-
-def put_pixel(x, y, color):
-    if 0 <= x < WIDTH and 0 <= y < HEIGHT:
-        framebuffer[y][x] = color
-
-def draw_framebuffer():
-    for y in range(HEIGHT):
-        for x in range(WIDTH):
-            screen.set_at((x, y), framebuffer[y][x])
-
-def edge(a, b, c):
-    return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x)
-
-def interpolate(c1, c2, c3, w1, w2, w3):
-    return (
-        int(c1[0]*w1 + c2[0]*w2 + c3[0]*w3),
-        int(c1[1]*w1 + c2[1]*w2 + c3[1]*w3),
-        int(c1[2]*w1 + c2[2]*w2 + c3[2]*w3),
-    )
-
-def draw_triangle(v1, v2, v3):
-    min_x = max(min(v1.x, v2.x, v3.x), 0)
-    max_x = min(max(v1.x, v2.x, v3.x), WIDTH - 1)
-    min_y = max(min(v1.y, v2.y, v3.y), 0)
-    max_y = min(max(v1.y, v2.y, v3.y), HEIGHT - 1)
-
-    area = edge(v1, v2, v3)
-    if area == 0:
-        return
-
-    for y in range(min_y, max_y + 1):
-        for x in range(min_x, max_x + 1):
-            p = Vertex(x, y, (0, 0, 0))
-            w1 = edge(v2, v3, p) / area
-            w2 = edge(v3, v1, p) / area
-            w3 = edge(v1, v2, p) / area
-
-            if w1 >= 0 and w2 >= 0 and w3 >= 0:
-                put_pixel(x, y, interpolate(v1.color, v2.color, v3.color, w1, w2, w3))
+# =====================
+# ======= SENSORES =====
+# =====================
+sensores = {
+    "screen_width": SCREEN_W,
+    "screen_height": SCREEN_H,
+    "screen_area": SCREEN_W * SCREEN_H
+}
 
 # =====================
 # ======= IA ==========
 # =====================
+ultimo_fala = 0
+
 def ia_controller():
-    """
-    Unidade de controle inteligente
-    """
+    global ultimo_fala
+
     if registradores["C"] != 1:
         return
 
-    # Sensoriamento
     A = registradores["A"]
 
-    # Decisão
-    if A < 50:
-        registradores["B"] = random.randint(1, 5)
-        add()
-        action = "ADD"
-    else:
+    # ---- Estados mentais ----
+    if A < 40:
+        registradores["STATE"] = "IDLE"
         registradores["B"] = random.randint(1, 3)
+        add()
+        texto = "System idle. Light processing."
+
+    elif A < 120:
+        registradores["STATE"] = "ACTIVE"
+        registradores["B"] = random.randint(3, 6)
+        add()
+        texto = "System active. Optimizing tasks."
+
+    else:
+        registradores["STATE"] = "OVERLOAD"
+        registradores["B"] = random.randint(1, 4)
         sub()
-        action = "SUB"
+        texto = "Warning. Reducing load."
 
-    # Estado
-    registradores["STATE"] = A
-
-    # Aprendizado simples (log)
     hd_write({
         "A": registradores["A"],
         "B": registradores["B"],
-        "ACTION": action
+        "STATE": registradores["STATE"],
+        "SCREEN": sensores
     })
 
+    agora = time.time()
+    if agora - ultimo_fala > 4:
+        falar(texto)
+        ultimo_fala = agora
+
 # =====================
-# ===== LOOP ==========
+# ======= CÂMERA ======
+# =====================
+camera = cv2.VideoCapture(0)
+camera_ok = camera.isOpened()
+
+# =====================
+# ======= LOOP ========
 # =====================
 size = 80
 direction = 1
+running = True
 
-while True:
-    clock.tick(FPS)
+while running:
+    clock.tick(60)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+            running = False
 
-    # IA controla CPU
     ia_controller()
 
-    # IA influencia GPU
     size += direction * 2
     if size > 200 or size < 60:
         direction *= -1
 
-    clear((10, 10 + registradores["A"] % 200, 40))
+    # ---- Cor muda conforme estado ----
+    if registradores["STATE"] == "IDLE":
+        bg = (10, 30, 40)
+    elif registradores["STATE"] == "ACTIVE":
+        bg = (20, 80, 40)
+    else:
+        bg = (120, 30, 30)
 
-    cx, cy = WIDTH // 2, HEIGHT // 2
+    screen.fill(bg)
 
-    v1 = Vertex(cx, cy - size, (255, 0, 0))
-    v2 = Vertex(cx - size, cy + size, (0, 255, 0))
-    v3 = Vertex(cx + size, cy + size, (0, 0, 255))
+    pygame.draw.polygon(
+        screen,
+        (255, 255, 255),
+        [
+            (WIDTH//2, HEIGHT//2 - size),
+            (WIDTH//2 - size, HEIGHT//2 + size),
+            (WIDTH//2 + size, HEIGHT//2 + size)
+        ]
+    )
 
-    draw_triangle(v1, v2, v3)
-    draw_framebuffer()
+    screen.blit(font.render(f"A={registradores['A']}", True, (255,255,255)), (10,10))
+    screen.blit(font.render(f"STATE={registradores['STATE']}", True, (255,255,255)), (10,30))
+    screen.blit(
+        font.render(
+            f"Screen: {sensores['screen_width']}x{sensores['screen_height']}",
+            True,
+            (0,200,255)
+        ),
+        (10,50)
+    )
+
     pygame.display.flip()
+
+    if camera_ok:
+        ret, frame = camera.read()
+        if ret:
+            frame = cv2.resize(frame, (320, 240))
+            cv2.imshow("Camera Sensor", frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            running = False
+
+# =====================
+# ======= FINAL =======
+# =====================
+pygame.quit()
+if camera_ok:
+    camera.release()
+    cv2.destroyAllWindows()
+sys.exit()
